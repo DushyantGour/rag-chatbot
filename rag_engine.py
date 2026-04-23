@@ -8,8 +8,9 @@ import docx
 import openpyxl
 
 # Embeddings + Vector DB
-from sentence_transformers import SentenceTransformer
+# Embeddings + Vector DB
 import chromadb
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
 # Groq
 from groq import Groq
@@ -20,15 +21,17 @@ load_dotenv()
 # ── Config ──────────────────────────────────────────
 DOCS_FOLDER = "documents"
 CHROMA_FOLDER = "chroma_db"
-EMBED_MODEL = "all-MiniLM-L6-v2"       # small, fast, local
-GROQ_MODEL = "llama-3.1-8b-instant"           # fast & free on Groq
-CHUNK_SIZE = 500                         # characters per chunk
+GROQ_MODEL = "llama3-8b-8192"
+CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
 # ── Init ─────────────────────────────────────────────
-embedder = SentenceTransformer(EMBED_MODEL)
+embedder = DefaultEmbeddingFunction()
 chroma_client = chromadb.PersistentClient(path=CHROMA_FOLDER)
-collection = chroma_client.get_or_create_collection(name="documents")
+collection = chroma_client.get_or_create_collection(
+    name="documents",
+    embedding_function=embedder
+)
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
@@ -118,9 +121,7 @@ def index_documents():
     metadatas = [{"source": c["source"]} for c in all_chunks]
 
     print(f"🔍 Embedding {len(texts)} chunks...")
-    embeddings = embedder.encode(texts, show_progress_bar=True).tolist()
-
-    collection.add(documents=texts, embeddings=embeddings, ids=ids, metadatas=metadatas)
+    collection.add(documents=texts, ids=ids, metadatas=metadatas)
     print(f"✅ Indexed {len(texts)} chunks into ChromaDB.")
 
 
@@ -128,10 +129,8 @@ def index_documents():
 
 def query(user_question, top_k=5):
     # Embed the question
-    q_embedding = embedder.encode([user_question]).tolist()
-
     # Search ChromaDB
-    results = collection.query(query_embeddings=q_embedding, n_results=top_k)
+    results = collection.query(query_texts=[user_question], n_results=top_k)
     chunks = results["documents"][0]
     sources = [m["source"] for m in results["metadatas"][0]]
 
