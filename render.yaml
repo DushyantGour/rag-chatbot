@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: rag-chatbot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app -c gunicorn.conf.py
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false

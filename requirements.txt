@@ -1,0 +1,11 @@
+groq
+flask
+flask-cors
+werkzeug
+chromadb
+sentence-transformers
+pypdf
+python-docx
+openpyxl
+python-dotenv
+gunicorn
